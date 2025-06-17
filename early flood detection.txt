@@ -1,0 +1,56 @@
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+#include <SoftwareSerial.h>
+
+const int trigPin = 9;
+const int echoPin = 10;
+const int buzzerPin = 11;
+long duration;
+int distance;
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+SoftwareSerial gsmSerial(7, 8); // RX, TX for GSM module
+
+void setup() {
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+  pinMode(buzzerPin, OUTPUT);
+  lcd.begin(16, 2);
+  lcd.print("Flood Detection");
+  gsmSerial.begin(9600);
+  delay(2000);
+}
+
+void loop() {
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+  duration = pulseIn(echoPin, HIGH);
+  distance = (duration / 2) / 29.1;
+  
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Distance: ");
+  lcd.print(distance);
+  lcd.print(" cm");
+  
+  if (distance <= 10) {
+    digitalWrite(buzzerPin, HIGH);
+    sendSMS();
+  } else {
+    digitalWrite(buzzerPin, LOW);
+  }
+  delay(1000);
+}
+
+void sendSMS() {
+  gsmSerial.println("AT+CMGF=1"); // Set SMS mode
+  delay(100);
+  gsmSerial.println("AT+CMGS=\"+1234567890\""); // Replace with recipient's number
+  delay(100);
+  gsmSerial.println("Flood Alert: Water level is critical!"); // SMS content
+  delay(100);
+  gsmSerial.write(26); // ASCII code of CTRL+Z to send SMS
+  delay(100);
+}
